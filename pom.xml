@@ -129,6 +129,7 @@
                     <descriptors>
                         <descriptor>src/main/assembly/development.xml</descriptor>
                         <descriptor>src/main/assembly/package.xml</descriptor>
+                        <descriptor>src/main/assembly/standalone.xml</descriptor>
                     </descriptors>
                 </configuration>
                 <executions>

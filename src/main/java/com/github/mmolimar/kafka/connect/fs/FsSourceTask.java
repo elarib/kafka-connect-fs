@@ -28,6 +28,10 @@ public class FsSourceTask extends SourceTask {
     private FsSourceTaskConfig config;
     private Policy policy;
 
+    private int MAX_BATCH_SIZE = 50;
+
+    private int CURSOR = 0;
+
     @Override
     public String version() {
         return Version.getVersion();
@@ -64,21 +68,25 @@ public class FsSourceTask extends SourceTask {
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         while (stop != null && !stop.get() && !policy.hasEnded()) {
-            log.trace("Polling for new data");
+            log.info("Polling for new data");
 
-            final List<SourceRecord> results = new ArrayList<>();
-            List<FileMetadata> files = filesToProcess();
-            files.forEach(metadata -> {
-                try (FileReader reader = policy.offer(metadata, context.offsetStorageReader())) {
-                    log.info("Processing records for file {}", metadata);
-                    while (reader.hasNext()) {
-                        results.add(convert(metadata, reader.currentOffset(), reader.next()));
+            final List<SourceRecord> results = new ArrayList<>(MAX_BATCH_SIZE);
+
+            if(results.size() < MAX_BATCH_SIZE){
+                List<FileMetadata> files = filesToProcess();
+                files.forEach(metadata -> {
+                    try (FileReader reader = policy.offer(metadata, context.offsetStorageReader())) {
+                        log.info("Processing records for file {}", metadata);
+                        while (reader.hasNext()) {
+                            results.add(convert(metadata, reader.currentOffset(), reader.next()));
+                        }
+                    } catch (ConnectException | IOException e) {
+                        //when an exception happens reading a file, the connector continues
+                        log.error("Error reading file from FS: " + metadata.getPath() + ". Keep going...", e);
                     }
-                } catch (ConnectException | IOException e) {
-                    //when an exception happens reading a file, the connector continues
-                    log.error("Error reading file from FS: " + metadata.getPath() + ". Keep going...", e);
-                }
-            });
+                });
+            }
+            log.info(CURSOR+" Batch loading .... ");
             return results;
         }
 
