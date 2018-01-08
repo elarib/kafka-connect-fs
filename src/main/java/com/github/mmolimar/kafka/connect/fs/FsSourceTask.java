@@ -72,12 +72,12 @@ public class FsSourceTask extends SourceTask {
 
             final List<SourceRecord> results = new ArrayList<>(MAX_BATCH_SIZE);
 
-            if(results.size() < MAX_BATCH_SIZE){
+
                 List<FileMetadata> files = filesToProcess();
                 files.forEach(metadata -> {
                     try (FileReader reader = policy.offer(metadata, context.offsetStorageReader())) {
                         log.info("Processing records for file {}", metadata);
-                        while (reader.hasNext()) {
+                        while (results.size() < MAX_BATCH_SIZE & reader.hasNext()) {
                             results.add(convert(metadata, reader.currentOffset(), reader.next()));
                         }
                     } catch (ConnectException | IOException e) {
@@ -85,7 +85,7 @@ public class FsSourceTask extends SourceTask {
                         log.error("Error reading file from FS: " + metadata.getPath() + ". Keep going...", e);
                     }
                 });
-            }
+
             log.info(CURSOR+" Batch loading .... ");
             return results;
         }
