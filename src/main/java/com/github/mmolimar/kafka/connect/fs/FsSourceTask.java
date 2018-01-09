@@ -78,6 +78,7 @@ public class FsSourceTask extends SourceTask {
 
             Iterator<FileMetadata> filesIterator = files.iterator();
 
+
             while(filesIterator.hasNext() && results.size() < this.batchSize){
                 FileMetadata metadata = filesIterator.next();
                 log.info("Metadata", metadata);
@@ -102,6 +103,8 @@ public class FsSourceTask extends SourceTask {
             // Remove all files polled
             if (!filesToRemove.isEmpty()) files.removeAll(filesToRemove);
             currentOffset += results.size();
+            if(results.isEmpty())
+                this.stop();
             log.info("Flush results size of : " + results.size() + ", current offset : " + currentOffset);
             return results;
         }
