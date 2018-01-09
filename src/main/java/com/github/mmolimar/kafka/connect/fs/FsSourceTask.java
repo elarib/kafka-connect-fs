@@ -30,6 +30,7 @@ public class FsSourceTask extends SourceTask {
     private FileReader reader;
     List<FileMetadata> files;
     private long batchSize;
+    private long currentOffset = 0L;
 
     @Override
     public String version() {
@@ -70,12 +71,16 @@ public class FsSourceTask extends SourceTask {
         final List<SourceRecord> results = new ArrayList<>();
         List<FileMetadata> filesToRemove = new ArrayList<>();
         while (stop != null && !stop.get() && !policy.hasEnded()) {
-            log.trace("Polling for new data");
+            log.info("Polling for new data");
             if (files == null) files = filesToProcess();
+
+            log.info("Files : " + files.toString());
+
             Iterator<FileMetadata> filesIterator = files.iterator();
 
             while(filesIterator.hasNext() && results.size() < this.batchSize){
                 FileMetadata metadata = filesIterator.next();
+                log.info("Metadata", metadata);
                 try {
                     if (this.reader == null) this.reader = policy.offer(metadata, context.offsetStorageReader());
 
@@ -84,7 +89,7 @@ public class FsSourceTask extends SourceTask {
                         results.add(convert(metadata, reader.currentOffset(), reader.next()));
                     }
                     if(!reader.hasNext()) {
-                        log.trace("Close reader");
+                        log.warn("Close reader");
                         this.reader.close();
                         this.reader = null;
                         filesToRemove.add(metadata);
@@ -96,7 +101,8 @@ public class FsSourceTask extends SourceTask {
             }
             // Remove all files polled
             if (!filesToRemove.isEmpty()) files.removeAll(filesToRemove);
-            log.trace("Flush results size of : " + results.size());
+            currentOffset += results.size();
+            log.info("Flush results size of : " + results.size() + ", current offset : " + currentOffset);
             return results;
         }
 
