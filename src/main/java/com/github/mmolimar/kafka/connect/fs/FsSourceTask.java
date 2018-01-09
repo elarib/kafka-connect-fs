@@ -30,6 +30,7 @@ public class FsSourceTask extends SourceTask {
     private FileReader reader;
     List<FileMetadata> files;
     private long batchSize;
+    private int sleepDurationBeforeStop = 5;
     private long currentOffset = 0L;
 
     @Override
@@ -104,7 +105,7 @@ public class FsSourceTask extends SourceTask {
             if (!filesToRemove.isEmpty()) files.removeAll(filesToRemove);
             currentOffset += results.size();
             if(results.isEmpty())
-                this.stop();
+                doStop();
             log.info("Flush results size of : " + results.size() + ", current offset : " + currentOffset);
             return results;
         }
@@ -143,6 +144,10 @@ public class FsSourceTask extends SourceTask {
                 struct.schema(),
                 struct
         );
+    }
+
+    private void doStop(){
+        new TaskHandler(this, sleepDurationBeforeStop).start();
     }
 
     @Override
