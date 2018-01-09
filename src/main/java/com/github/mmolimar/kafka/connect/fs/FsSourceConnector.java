@@ -1,7 +1,5 @@
 package com.github.mmolimar.kafka.connect.fs;
 
-import com.github.mmolimar.kafka.connect.fs.file.reader.FileReader;
-import com.github.mmolimar.kafka.connect.fs.policy.Policy;
 import com.github.mmolimar.kafka.connect.fs.util.Version;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -31,6 +29,7 @@ public class FsSourceConnector extends SourceConnector {
 
     @Override
     public void start(Map<String, String> properties) {
+
         log.info("Starting FsSourceConnector...");
         try {
             config = new FsSourceConnectorConfig(properties);

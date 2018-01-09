@@ -8,7 +8,7 @@ public class TaskHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(TaskHandler.class);
 
     private FsSourceTask parentTask;
-    private long sleepDurationBeforeStop = 5;
+    private long sleepDurationBeforeStop = 1;
 
     public TaskHandler(FsSourceTask parentTask, long sleepDurationBeforeStop) {
         this.parentTask = parentTask;
@@ -23,7 +23,9 @@ public class TaskHandler extends Thread {
             try {
                 Thread.sleep(sleepDuration);
                 log.info("Stop task");
+                parentTask.checkStatus();
                 parentTask.stop();
+                parentTask.checkStatus();
             } catch (InterruptedException ie) {
                 log.warn("An interrupted exception has occurred.", ie);
             }

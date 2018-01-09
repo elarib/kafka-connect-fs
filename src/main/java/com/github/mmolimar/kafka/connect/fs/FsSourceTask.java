@@ -15,6 +15,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -30,8 +34,10 @@ public class FsSourceTask extends SourceTask {
     private FileReader reader;
     List<FileMetadata> files;
     private long batchSize;
-    private int sleepDurationBeforeStop = 5;
+    private int sleepDurationBeforeStop = 1;
     private long currentOffset = 0L;
+    private boolean deleteTaskDone = false;
+    private final String DEFAULT_REST_PORT = "28082";
 
     @Override
     public String version() {
@@ -40,6 +46,7 @@ public class FsSourceTask extends SourceTask {
 
     @Override
     public void start(Map<String, String> properties) {
+
         try {
             config = new FsSourceTaskConfig(properties);
 
@@ -72,17 +79,14 @@ public class FsSourceTask extends SourceTask {
         final List<SourceRecord> results = new ArrayList<>();
         List<FileMetadata> filesToRemove = new ArrayList<>();
         while (stop != null && !stop.get() && !policy.hasEnded()) {
-            log.info("Polling for new data");
+            log.trace("Polling for new data");
             if (files == null) files = filesToProcess();
-
-            log.info("Files : " + files.toString());
 
             Iterator<FileMetadata> filesIterator = files.iterator();
 
 
             while(filesIterator.hasNext() && results.size() < this.batchSize){
                 FileMetadata metadata = filesIterator.next();
-                log.info("Metadata", metadata);
                 try {
                     if (this.reader == null) this.reader = policy.offer(metadata, context.offsetStorageReader());
 
@@ -104,9 +108,11 @@ public class FsSourceTask extends SourceTask {
             // Remove all files polled
             if (!filesToRemove.isEmpty()) files.removeAll(filesToRemove);
             currentOffset += results.size();
-            if(results.isEmpty())
-                doStop();
-            log.info("Flush results size of : " + results.size() + ", current offset : " + currentOffset);
+            if(results.isEmpty() && !deleteTaskDone) {
+                deleteTaskDone = true;
+                callDeleteTask();
+            }
+            log.trace("Flush results size of : " + results.size() + ", current offset : " + currentOffset);
             return results;
         }
 
@@ -146,8 +152,28 @@ public class FsSourceTask extends SourceTask {
         );
     }
 
-    private void doStop(){
+    private void callDeleteTask(){
         new TaskHandler(this, sleepDurationBeforeStop).start();
+    }
+
+    public void checkStatus(){
+        try {
+            InetAddress adrLocale = InetAddress.getLocalHost();
+            Map<String, String> env = System.getenv();
+            String port = env.getOrDefault("CONNECT_REST_PORT", DEFAULT_REST_PORT);
+            String host = env.getOrDefault("CONNECT_REST_ADVERTISED_HOST_NAME", adrLocale.getHostName());
+            String urlToRead = "http://" + host +  ":" + port + "/connectors";
+            log.warn("urlToRead : " + urlToRead);
+            log.warn("adrLocale getHostAddress : " + adrLocale.getHostAddress());
+
+            URL url = new URL(urlToRead);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            log.warn("Response status code : " + conn.getResponseCode());
+            log.warn("Response : " + conn.getResponseMessage());
+        } catch(Exception e) {
+            log.error("get lsit failed", e);
+        }
     }
 
     @Override
