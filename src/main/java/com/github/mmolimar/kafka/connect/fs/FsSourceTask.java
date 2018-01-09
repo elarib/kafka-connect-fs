@@ -27,10 +27,9 @@ public class FsSourceTask extends SourceTask {
     private AtomicBoolean stop;
     private FsSourceTaskConfig config;
     private Policy policy;
-
-    private int MAX_BATCH_SIZE = 50;
-
-    private int CURSOR = 0;
+    private FileReader reader;
+    List<FileMetadata> files;
+    private long batchSize;
 
     @Override
     public String version() {
@@ -50,6 +49,7 @@ public class FsSourceTask extends SourceTask {
                 throw new ConfigException("FileReader class " +
                         config.getClass(FsSourceTaskConfig.FILE_READER_CLASS) + "is not a sublass of " + FileReader.class);
             }
+            this.batchSize = config.getLong(FsSourceTaskConfig.BATCH_SIZE);
 
             Class<Policy> policyClass = (Class<Policy>) Class.forName(properties.get(FsSourceTaskConfig.POLICY_CLASS));
             FsSourceTaskConfig taskConfig = new FsSourceTaskConfig(properties);
@@ -67,26 +67,36 @@ public class FsSourceTask extends SourceTask {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
+        final List<SourceRecord> results = new ArrayList<>();
+        List<FileMetadata> filesToRemove = new ArrayList<>();
         while (stop != null && !stop.get() && !policy.hasEnded()) {
-            log.info("Polling for new data");
+            log.trace("Polling for new data");
+            if (files == null) files = filesToProcess();
+            Iterator<FileMetadata> filesIterator = files.iterator();
 
-            final List<SourceRecord> results = new ArrayList<>(MAX_BATCH_SIZE);
+            while(filesIterator.hasNext() && results.size() < this.batchSize){
+                FileMetadata metadata = filesIterator.next();
+                try {
+                    if (this.reader == null) this.reader = policy.offer(metadata, context.offsetStorageReader());
 
-
-                List<FileMetadata> files = filesToProcess();
-                files.forEach(metadata -> {
-                    try (FileReader reader = policy.offer(metadata, context.offsetStorageReader())) {
-                        log.info("Processing records for file {}", metadata);
-                        while (results.size() < MAX_BATCH_SIZE & reader.hasNext()) {
-                            results.add(convert(metadata, reader.currentOffset(), reader.next()));
-                        }
-                    } catch (ConnectException | IOException e) {
-                        //when an exception happens reading a file, the connector continues
-                        log.error("Error reading file from FS: " + metadata.getPath() + ". Keep going...", e);
+                    log.info("Processing records for file {}", metadata);
+                    while (reader.hasNext() && results.size() < this.batchSize) {
+                        results.add(convert(metadata, reader.currentOffset(), reader.next()));
                     }
-                });
-
-            log.info(CURSOR+" Batch loading .... ");
+                    if(!reader.hasNext()) {
+                        log.trace("Close reader");
+                        this.reader.close();
+                        this.reader = null;
+                        filesToRemove.add(metadata);
+                    }
+                } catch (ConnectException | IOException e) {
+                    //when an exception happens reading a file, the connector continues
+                    log.error("Error reading file from FS: " + metadata.getPath() + ". Keep going...", e);
+                }
+            }
+            // Remove all files polled
+            if (!filesToRemove.isEmpty()) files.removeAll(filesToRemove);
+            log.trace("Flush results size of : " + results.size());
             return results;
         }
 

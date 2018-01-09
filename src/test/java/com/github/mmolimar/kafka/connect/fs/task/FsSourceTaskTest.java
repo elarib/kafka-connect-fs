@@ -34,6 +34,7 @@ public class FsSourceTaskTest {
                     temporaryFolder.getRoot().toURI() + File.separator + "dir2",
                     temporaryFolder.getRoot().toURI() + File.separator + "dir3"));
             put(FsSourceTaskConfig.TOPIC, "topic_test");
+            put(FsSourceTaskConfig.BATCH_SIZE, "100");
             put(FsSourceTaskConfig.POLICY_CLASS, SimplePolicy.class.getName());
             put(FsSourceTaskConfig.FILE_READER_CLASS, TextFileReader.class.getName());
         }};

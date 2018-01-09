@@ -34,6 +34,7 @@ public class HdfsFileWatcherPolicyTest extends HdfsPolicyTestBase {
                     .toArray(size -> new String[size]);
             put(FsSourceTaskConfig.FS_URIS, String.join(",", uris));
             put(FsSourceTaskConfig.TOPIC, "topic_test");
+            put(FsSourceTaskConfig.BATCH_SIZE, "100");
             put(FsSourceTaskConfig.POLICY_CLASS, HdfsFileWatcherPolicy.class.getName());
             put(FsSourceTaskConfig.FILE_READER_CLASS, TextFileReader.class.getName());
             put(FsSourceTaskConfig.POLICY_REGEXP, "^[0-9]*\\.txt$");

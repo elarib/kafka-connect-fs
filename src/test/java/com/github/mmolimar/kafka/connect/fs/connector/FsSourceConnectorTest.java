@@ -35,6 +35,7 @@ public class FsSourceConnectorTest {
                     temporaryFolder.getRoot().toURI() + File.separator + "dir2",
                     temporaryFolder.getRoot().toURI() + File.separator + "dir3"));
             put(FsSourceTaskConfig.TOPIC, "topic_test");
+            put(FsSourceTaskConfig.BATCH_SIZE, "100");
         }};
         connProps = new HashMap<>(cfg);
     }

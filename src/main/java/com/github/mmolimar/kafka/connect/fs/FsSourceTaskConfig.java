@@ -6,6 +6,9 @@ import java.util.Map;
 
 public class FsSourceTaskConfig extends FsSourceConnectorConfig {
 
+    public static final String BATCH_SIZE = "batch.size";
+    public static final String BATCH_SIZE_DOC = "size to poll data";
+
     public static final String POLICY_PREFIX = "policy.";
     public static final String FILE_READER_PREFIX = "file_reader.";
 
@@ -33,6 +36,7 @@ public class FsSourceTaskConfig extends FsSourceConnectorConfig {
 
     public static ConfigDef conf() {
         return FsSourceConnectorConfig.conf()
+                .define(BATCH_SIZE, ConfigDef.Type.LONG, ConfigDef.Importance.MEDIUM, BATCH_SIZE_DOC)
                 .define(POLICY_CLASS, ConfigDef.Type.CLASS, ConfigDef.Importance.HIGH, POLICY_CLASS_DOC)
                 .define(POLICY_RECURSIVE, ConfigDef.Type.BOOLEAN, Boolean.TRUE, ConfigDef.Importance.LOW, POLICY_RECURSIVE_DOC)
                 .define(POLICY_REGEXP, ConfigDef.Type.STRING, ".*", ConfigDef.Importance.MEDIUM, POLICY_REGEXP_DOC)
